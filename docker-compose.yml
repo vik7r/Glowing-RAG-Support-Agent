@@ -1,0 +1,110 @@
+version: '3.8'
+
+services:
+  # RAG Support Agent Backend
+  support-agent:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - PINECONE_API_KEY=${PINECONE_API_KEY}
+      - PINECONE_ENVIRONMENT=${PINECONE_ENVIRONMENT:-us-east-1-aws}
+      - PINECONE_INDEX=${PINECONE_INDEX:-support-agent}
+      - TAVILY_API_KEY=${TAVILY_API_KEY}
+      - SERVER_HOST=0.0.0.0
+      - SERVER_PORT=8000
+      - LOG_LEVEL=info
+    volumes:
+      - ./support_agent.db:/app/support_agent.db
+      - ./docs:/app/docs
+      - ./temp:/app/temp
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    networks:
+      - rag-network
+    depends_on:
+      - postgres  # Optional: if using PostgreSQL instead of SQLite
+
+  # Optional: PostgreSQL for scalable conversation storage
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: support_agent
+      POSTGRES_USER: ${DB_USER:-agent}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-secure_password_change_me}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-agent}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - rag-network
+    profiles:
+      - with-postgres  # Run: docker-compose --profile with-postgres up -d
+
+  # Optional: Redis for response caching and rate limiting
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - rag-network
+    profiles:
+      - with-cache  # Run: docker-compose --profile with-cache up -d
+
+volumes:
+  postgres_data:
+  redis_data:
+
+networks:
+  rag-network:
+    driver: bridge
+
+# Usage:
+#   Basic setup:
+#   docker-compose up -d
+#
+#   With PostgreSQL:
+#   docker-compose --profile with-postgres up -d
+#
+#   With Redis caching:
+#   docker-compose --profile with-cache up -d
+#
+#   With all optional services:
+#   docker-compose --profile with-postgres --profile with-cache up -d
+#
+# Access:
+#   API: http://localhost:8000
+#   Docs: http://localhost:8000/docs
+#   Postgres: localhost:5432
+#   Redis: localhost:6379
+#
+# Logs:
+#   docker-compose logs -f support-agent
+#
+# Shutdown:
+#   docker-compose down
+#
+# Cleanup:
+#   docker-compose down -v  # Remove volumes too
