@@ -1,0 +1,29 @@
+# Core Framework
+fastapi==0.109.0
+uvicorn[standard]==0.27.0
+pydantic==2.6.0
+python-multipart==0.0.6
+
+# LangChain & LLM
+langchain==0.1.14
+langchain-core==0.1.33
+langchain-openai==0.1.6
+langchain-community==0.0.34
+langchain-text-splitters==0.0.1
+
+# Vector Store
+pinecone-client==5.0.1
+
+# Search
+tavily-python==0.3.4
+
+# Utilities
+python-dotenv==1.0.0
+requests==2.31.0
+
+# Database (built-in sqlite3, but can add for advanced use)
+# sqlalchemy==2.0.27
+
+# Optional: For advanced features
+# pandas==2.1.4
+# numpy==1.26.3
